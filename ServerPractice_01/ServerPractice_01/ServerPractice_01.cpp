@@ -1,11 +1,12 @@
 
 #include <chrono>
 #include <iostream>
+#include <mutex>
 #include <thread>
 #include <vector>
 using namespace std;
-const int MaxCount = 300000;
-const int ThreadCount = 4;
+const int MaxCount = 1500000;
+const int ThreadCount = 8;
 bool IsPrimeNumber(int number)
 {
     if(number == 1) return false;
@@ -27,16 +28,17 @@ void PrintNumber(const vector<int> &numbers)
     }
 }
 
-int main()
+void TestPrime()
 {
     auto num = 1;
 
+    recursive_mutex num_mutex;
     vector<int> primes;
-
+    recursive_mutex primes_mutex;
+    
     auto t0 = chrono::system_clock::now();
-
+    
     vector<shared_ptr<thread>> threads;
-
     for(int i=0; i<ThreadCount; i++)
     {
         shared_ptr<thread> thr (new thread([&]()
@@ -44,11 +46,15 @@ int main()
             while(true)
             {
                 int n;
-                n = num;
-                num++;
+                {
+                    lock_guard<recursive_mutex> num_lock(num_mutex);
+                    n = num;
+                    num++;
+                }
                 if(n>=MaxCount) break;
                 if(IsPrimeNumber(n))
                 {
+                    lock_guard<recursive_mutex> prime_lock(primes_mutex);
                     primes.push_back(n);
                 }
             }           
@@ -63,6 +69,9 @@ int main()
 
     auto t1 = chrono::system_clock::now();
     cout << "took time : " << chrono::duration_cast<chrono::milliseconds>(t1-t0).count() << endl;
+}
 
-    return 0;
+int main()
+{
+    
 }
